@@ -1,0 +1,75 @@
+From c5bae1a7946c66b5f4d0e16be8af6705552119fa Mon Sep 17 00:00:00 2001
+From: Yanyue Zhang <zhangyanyue@loongson.cn>
+Date: Thu, 10 Oct 2024 11:47:32 +0800
+Subject: [PATCH] Fix some errors which may cause SEGV
+
+---
+ ioctls/autofs.c     | 1 +
+ ioctls/scsi.c       | 2 +-
+ syscalls/vmsplice.c | 2 --
+ sysv-shm.c          | 5 ++---
+ 4 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/ioctls/autofs.c b/ioctls/autofs.c
+index 03eacaaeb..dafcbe898 100644
+--- a/ioctls/autofs.c
++++ b/ioctls/autofs.c
+@@ -294,6 +294,7 @@ static void autofs_sanitise(const struct ioctl_group *grp, struct syscallrecord
+ 	case AUTOFS_DEV_IOCTL_EXPIRE:
+ 	case AUTOFS_DEV_IOCTL_ASKUMOUNT:
+ 	case AUTOFS_DEV_IOCTL_ISMOUNTPOINT:
++		rec->a3 = (unsigned long) get_writable_address(sizeof(struct autofs_dev_ioctl));
+ 		arg = (struct autofs_dev_ioctl *) rec->a3;
+ 		init_autofs_dev_ioctl(arg);
+ 		arg->ioctlfd = get_random_fd();
+diff --git a/ioctls/scsi.c b/ioctls/scsi.c
+index e20c7149f..e3349ddca 100644
+--- a/ioctls/scsi.c
++++ b/ioctls/scsi.c
+@@ -80,7 +80,7 @@ static void scsi_sg_io_sanitise(struct syscallrecord *rec)
+ {
+ 	struct sgio *sgio;
+ 
+-	sgio = (struct sgio *) get_address();
++	sgio = (struct sgio *) get_writable_address(sizeof(struct sgio));
+ 
+ 	sgio->cmd[0] = 0x12;
+ 	sgio->cmd[3] = 0x2;
+diff --git a/syscalls/vmsplice.c b/syscalls/vmsplice.c
+index 14706992b..2d8a865f3 100644
+--- a/syscalls/vmsplice.c
++++ b/syscalls/vmsplice.c
+@@ -17,8 +17,6 @@ static void sanitise_vmsplice(struct syscallrecord *rec)
+ {
+ 	if ((rnd() % 10) > 0)
+ 		rec->a1 = get_rand_pipe_fd();
+-
+-	rec->a3 = rnd() % UIO_MAXIOV;
+ }
+ 
+ static unsigned long vmsplice_flags[] = {
+diff --git a/sysv-shm.c b/sysv-shm.c
+index 57bc56c9d..98e0d7f3e 100644
+--- a/sysv-shm.c
++++ b/sysv-shm.c
+@@ -48,7 +48,7 @@ void create_sysv_shms(void)
+ 
+ 		size = page_size * (1 + rnd() % 10);
+ 
+-		id = shmget(IPC_PRIVATE, page_size, flags);
++		id = shmget(IPC_PRIVATE, size, flags);
+ 		if (id == -1) {
+ 			free(obj);
+ 			continue;
+@@ -57,10 +57,9 @@ void create_sysv_shms(void)
+ 		obj->sysv_shm.flags = flags;
+ 		obj->sysv_shm.size = size;
+ 
+-		add_object(obj, OBJ_GLOBAL, OBJ_SYSV_SHM);
+-
+ 		p = shmat(id, NULL, 0);	// TODO: Try alternative flags.
+ 		if (p != (void *) -1)
+ 			obj->sysv_shm.ptr = p;
++		add_object(obj, OBJ_GLOBAL, OBJ_SYSV_SHM);
+ 	}
+ }
