@@ -1,0 +1,3 @@
+version=3
+opts=filenamemangle=s/.+\/v?(\d\S*)\.tar\.gz/trinity-$1\.tar\.gz/ \
+  https://github.com/kernelslacker/trinity/tags .*/v?(\d\S*)\.tar\.gz
