@@ -1,0 +1,12 @@
+Description: Change shell on script to use bash specific features
+Forwarded: not-needed
+Origin: vendor
+Last-Update: 2024-10-22
+--- a/scripts/rand-vm.sh
++++ b/scripts/rand-vm.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ #
+ # Do a random subset of VM related syscalls.
+ # (Always do mmap, so the child processes have some local maps)

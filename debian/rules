@@ -1,4 +1,23 @@
 #!/usr/bin/make -f
+# -*- makefile -*-
+
+export DH_VERBOSE=1
+
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+ifeq (,$(filter terse,$(DEB_BUILD_OPTIONS)))
+override_dh_auto_build:
+	dh_auto_build -- V=1
+endif
+
+override_dh_auto_install:
+	make install DESTDIR=./usr
+
+override_dh_clean:
+	make clean
+	dh_clean usr/bin/trinity config.h
 
 %:
 	dh $@
