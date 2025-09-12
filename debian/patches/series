@@ -1,3 +1,4 @@
 change-shell-on-examples
 add-support-for-trinity-in-loongarch.patch
-fix-loongarch64-some-errors-which-may-cause-SEGV.patch 
+fix-loongarch64-some-errors-which-may-cause-SEGV.patch
+0001-feat-add-sw64-support.patch

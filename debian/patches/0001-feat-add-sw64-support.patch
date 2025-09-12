@@ -1,0 +1,620 @@
+From 207fdf68497539dfcc7f477d933cf0e5c69643e7 Mon Sep 17 00:00:00 2001
+From: hudeng <hudeng@deepin.org>
+Date: Tue, 9 Sep 2025 05:20:16 +0000
+Subject: [PATCH] feat: add sw64 support
+
+---
+ Makefile                 |   1 +
+ include/arch-sw_64.h     |  18 ++
+ include/arch-syscalls.h  |   3 +
+ include/arch.h           |   4 +
+ include/syscalls-sw_64.h | 531 +++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 557 insertions(+)
+ create mode 100644 include/arch-sw_64.h
+ create mode 100644 include/syscalls-sw_64.h
+
+diff --git a/Makefile b/Makefile
+index 88520a9..09d2c3d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -72,6 +72,7 @@ SYSCALLS_ARCH	:= $(shell case "$(MACHINE)" in \
+ 		   (i?86*) echo syscalls/x86/*.c \
+ 				syscalls/x86/i386/*.c;; \
+ 		   (s390x*) echo syscalls/s390x/*.c ;; \
++		   (sw_64*) echo "" ;; \
+ 		   esac)
+ 
+ VERSION_H	:= include/version.h
+diff --git a/include/arch-sw_64.h b/include/arch-sw_64.h
+new file mode 100644
+index 0000000..7016352
+--- /dev/null
++++ b/include/arch-sw_64.h
+@@ -0,0 +1,18 @@
++#pragma once
++
++#define KERNEL_ADDR		0xfffff00000000000UL
++
++#define PAGE_SHIFT		13
++
++#define PAGE_OFFSET		0xfffff00000000000UL
++
++#define TASK_SIZE		0xfffff00000000000UL
++
++#define PTE_FILE_MAX_BITS	35
++
++#define PTRACE_GETREGS		0
++#define PTRACE_GETFPREGS	0
++#define PTRACE_SETREGS		0
++#define PTRACE_SETFPREGS	0
++
++#define SYSCALLS syscalls_sw_64
+diff --git a/include/arch-syscalls.h b/include/arch-syscalls.h
+index 256bb6b..9ce630d 100644
+--- a/include/arch-syscalls.h
++++ b/include/arch-syscalls.h
+@@ -31,6 +31,9 @@
+ #ifdef __sh__
+ #include "syscalls-sh.h"
+ #endif
++#ifdef __sw_64__
++#include "syscalls-sw_64.h"
++#endif
+ #ifdef __alpha__
+ #include "syscalls-alpha.h"
+ #endif
+diff --git a/include/arch.h b/include/arch.h
+index 9bf83a4..7a47344 100644
+--- a/include/arch.h
++++ b/include/arch.h
+@@ -38,6 +38,10 @@
+ #include "arch-sh.h"
+ #endif
+ 
++#ifdef __sw_64__
++#include "arch-sw_64.h"
++#endif
++
+ #ifdef __alpha__
+ #include "arch-alpha.h"
+ #endif
+diff --git a/include/syscalls-sw_64.h b/include/syscalls-sw_64.h
+new file mode 100644
+index 0000000..9f80ae0
+--- /dev/null
++++ b/include/syscalls-sw_64.h
+@@ -0,0 +1,531 @@
++#pragma once
++
++/*
++ * The sw_64 Linux syscall table.
++ */
++
++#include "sanitise.h"
++#include "syscall.h"
++#include "syscalls/syscalls.h"
++
++struct syscalltable syscalls_sw_64[] = {
++/* 0 */	{ .entry = &syscall_ni_syscall },
++/* 1 */	{ .entry = &syscall_exit },
++/* 2 */	{ .entry = &syscall_fork },
++/* 3 */	{ .entry = &syscall_read },
++/* 4 */	{ .entry = &syscall_write },
++/* 5 */	{ .entry = &syscall_ni_syscall },
++/* 6 */	{ .entry = &syscall_close },
++/* 7 */	{ .entry = &syscall_ni_syscall },
++/* 8 */	{ .entry = &syscall_ni_syscall },
++/* 9 */	{ .entry = &syscall_link },
++/* 10 */	{ .entry = &syscall_unlink },
++/* 11 */	{ .entry = &syscall_ni_syscall },
++/* 12 */	{ .entry = &syscall_chdir },
++/* 13 */	{ .entry = &syscall_fchdir },
++/* 14 */	{ .entry = &syscall_mknod },
++/* 15 */	{ .entry = &syscall_chmod },
++/* 16 */	{ .entry = &syscall_chown },
++/* 17 */	{ .entry = &syscall_brk },
++/* 18 */	{ .entry = &syscall_ni_syscall },
++/* 19 */	{ .entry = &syscall_lseek },
++/* 20 */	{ .entry = &syscall_ni_syscall },	/* getxpid */
++/* 21 */	{ .entry = &syscall_ni_syscall },
++/* 22 */	{ .entry = &syscall_umount },
++/* 23 */	{ .entry = &syscall_setuid },
++/* 24 */	{ .entry = &syscall_ni_syscall },	/* getxuid */
++/* 25 */	{ .entry = &syscall_ni_syscall },
++/* 26 */	{ .entry = &syscall_ptrace },
++/* 27 */	{ .entry = &syscall_ni_syscall },
++/* 28 */	{ .entry = &syscall_ni_syscall },
++/* 29 */	{ .entry = &syscall_ni_syscall },
++/* 30 */	{ .entry = &syscall_ni_syscall },
++/* 31 */	{ .entry = &syscall_ni_syscall },
++/* 32 */	{ .entry = &syscall_ni_syscall },
++/* 33 */	{ .entry = &syscall_access },
++/* 34 */	{ .entry = &syscall_ni_syscall },
++/* 35 */	{ .entry = &syscall_ni_syscall },
++/* 36 */	{ .entry = &syscall_sync },
++/* 37 */	{ .entry = &syscall_kill },
++/* 38 */	{ .entry = &syscall_ni_syscall },
++/* 39 */	{ .entry = &syscall_setpgid },
++/* 40 */	{ .entry = &syscall_ni_syscall },
++/* 41 */	{ .entry = &syscall_dup },
++/* 42 */	{ .entry = &syscall_pipe },
++/* 43 */	{ .entry = &syscall_ni_syscall },
++/* 44 */	{ .entry = &syscall_ni_syscall },
++/* 45 */	{ .entry = &syscall_open },
++/* 46 */	{ .entry = &syscall_ni_syscall },
++/* 47 */	{ .entry = &syscall_ni_syscall },	/* getxgid */
++/* 48 */	{ .entry = &syscall_ni_syscall },	/* odd_sigprocmask */
++/* 49 */	{ .entry = &syscall_ni_syscall },
++/* 50 */	{ .entry = &syscall_ni_syscall },
++/* 51 */	{ .entry = &syscall_acct },
++/* 52 */	{ .entry = &syscall_sigpending },
++/* 53 */	{ .entry = &syscall_ni_syscall },
++/* 54 */	{ .entry = &syscall_ioctl },
++/* 55 */	{ .entry = &syscall_ni_syscall },
++/* 56 */	{ .entry = &syscall_ni_syscall },
++/* 57 */	{ .entry = &syscall_symlink },
++/* 58 */	{ .entry = &syscall_readlink },
++/* 59 */	{ .entry = &syscall_execve },
++/* 60 */	{ .entry = &syscall_umask },
++/* 61 */	{ .entry = &syscall_chroot },
++/* 62 */	{ .entry = &syscall_ni_syscall },
++/* 63 */	{ .entry = &syscall_getpgrp },
++/* 64 */	{ .entry = &syscall_ni_syscall },
++/* 65 */	{ .entry = &syscall_ni_syscall },
++/* 66 */	{ .entry = &syscall_vfork },
++/* 67 */	{ .entry = &syscall_newstat },
++/* 68 */	{ .entry = &syscall_newlstat },
++/* 69 */	{ .entry = &syscall_ni_syscall },
++/* 70 */	{ .entry = &syscall_ni_syscall },
++/* 71 */	{ .entry = &syscall_mmap },
++/* 72 */	{ .entry = &syscall_ni_syscall },
++/* 73 */	{ .entry = &syscall_munmap },
++/* 74 */	{ .entry = &syscall_mprotect },
++/* 75 */	{ .entry = &syscall_madvise },
++/* 76 */	{ .entry = &syscall_vhangup },
++/* 77 */	{ .entry = &syscall_ni_syscall },
++/* 78 */	{ .entry = &syscall_ni_syscall },
++/* 79 */	{ .entry = &syscall_getgroups },
++/* 80 */	{ .entry = &syscall_setgroups },
++/* 81 */	{ .entry = &syscall_ni_syscall },
++/* 82 */	{ .entry = &syscall_ni_syscall },	/* setpgrp */
++/* 83 */	{ .entry = &syscall_ni_syscall },
++/* 84 */	{ .entry = &syscall_ni_syscall },
++/* 85 */	{ .entry = &syscall_ni_syscall },
++/* 86 */	{ .entry = &syscall_ni_syscall },
++/* 87 */	{ .entry = &syscall_ni_syscall },	/* gethostname */
++/* 88 */	{ .entry = &syscall_sethostname },
++/* 89 */	{ .entry = &syscall_ni_syscall },
++/* 90 */	{ .entry = &syscall_ni_syscall },	/* dup2 */
++/* 91 */	{ .entry = &syscall_newfstat },
++/* 92 */	{ .entry = &syscall_fcntl },
++/* 93 */	{ .entry = &syscall_ni_syscall },
++/* 94 */	{ .entry = &syscall_poll },
++/* 95 */	{ .entry = &syscall_fsync },
++/* 96 */	{ .entry = &syscall_setpriority },
++/* 97 */	{ .entry = &syscall_socket },
++/* 98 */	{ .entry = &syscall_connect },
++/* 99 */	{ .entry = &syscall_accept },
++/* 100 */	{ .entry = &syscall_ni_syscall },	/* odd_getpriority */
++/* 101 */	{ .entry = &syscall_send },
++/* 102 */	{ .entry = &syscall_recv },
++/* 103 */	{ .entry = &syscall_sigreturn },
++/* 104 */	{ .entry = &syscall_bind },
++/* 105 */	{ .entry = &syscall_setsockopt },
++/* 106 */	{ .entry = &syscall_listen },
++/* 107 */	{ .entry = &syscall_ni_syscall },
++/* 108 */	{ .entry = &syscall_ni_syscall },
++/* 109 */	{ .entry = &syscall_ni_syscall },	/* pfh_ops */
++/* 110 */	{ .entry = &syscall_ni_syscall },	/* old_pfh_ops */
++/* 111 */	{ .entry = &syscall_sigsuspend },
++/* 112 */	{ .entry = &syscall_ni_syscall },
++/* 113 */	{ .entry = &syscall_ni_syscall },	/* recvmsg */
++/* 114 */	{ .entry = &syscall_ni_syscall },	/* sendmsg */
++/* 115 */	{ .entry = &syscall_ni_syscall },
++/* 116 */	{ .entry = &syscall_ni_syscall },
++/* 117 */	{ .entry = &syscall_ni_syscall },
++/* 118 */	{ .entry = &syscall_getsockopt },
++/* 119 */	{ .entry = &syscall_socketcall },
++/* 120 */	{ .entry = &syscall_ni_syscall },	/* readv */
++/* 121 */	{ .entry = &syscall_ni_syscall },	/* writev */
++/* 122 */	{ .entry = &syscall_ni_syscall },
++/* 123 */	{ .entry = &syscall_fchown },
++/* 124 */	{ .entry = &syscall_fchmod },
++/* 125 */	{ .entry = &syscall_ni_syscall },	/* recvfrom */
++/* 126 */	{ .entry = &syscall_setreuid },
++/* 127 */	{ .entry = &syscall_setregid },
++/* 128 */	{ .entry = &syscall_rename },
++/* 129 */	{ .entry = &syscall_truncate },
++/* 130 */	{ .entry = &syscall_ftruncate },
++/* 131 */	{ .entry = &syscall_flock },
++/* 132 */	{ .entry = &syscall_setgid },
++/* 133 */	{ .entry = &syscall_ni_syscall },	/* sendto */
++/* 134 */	{ .entry = &syscall_shutdown },
++/* 135 */	{ .entry = &syscall_socketpair },
++/* 136 */	{ .entry = &syscall_mkdir },
++/* 137 */	{ .entry = &syscall_rmdir },
++/* 138 */	{ .entry = &syscall_ni_syscall },
++/* 139 */	{ .entry = &syscall_ni_syscall },
++/* 140 */	{ .entry = &syscall_ni_syscall },
++/* 141 */	{ .entry = &syscall_getpeername },
++/* 142 */	{ .entry = &syscall_ni_syscall },
++/* 143 */	{ .entry = &syscall_ni_syscall },
++/* 144 */	{ .entry = &syscall_getrlimit },
++/* 145 */	{ .entry = &syscall_setrlimit },
++/* 146 */	{ .entry = &syscall_ni_syscall },
++/* 147 */	{ .entry = &syscall_setsid },
++/* 148 */	{ .entry = &syscall_quotactl },
++/* 149 */	{ .entry = &syscall_ni_syscall },
++/* 150 */	{ .entry = &syscall_getsockname },
++/* 151 */	{ .entry = &syscall_ni_syscall },
++/* 152 */	{ .entry = &syscall_ni_syscall },
++/* 153 */	{ .entry = &syscall_ni_syscall },
++/* 154 */	{ .entry = &syscall_ni_syscall },
++/* 155 */	{ .entry = &syscall_ni_syscall },
++/* 156 */	{ .entry = &syscall_sigaction },
++/* 157 */	{ .entry = &syscall_ni_syscall },
++/* 158 */	{ .entry = &syscall_ni_syscall },
++/* 159 */	{ .entry = &syscall_ni_syscall },
++/* 160 */	{ .entry = &syscall_ni_syscall },
++/* 161 */	{ .entry = &syscall_ni_syscall },
++/* 162 */	{ .entry = &syscall_ni_syscall },
++/* 163 */	{ .entry = &syscall_ni_syscall },
++/* 164 */	{ .entry = &syscall_ni_syscall },
++/* 165 */	{ .entry = &syscall_ni_syscall },
++/* 166 */	{ .entry = &syscall_setdomainname },
++/* 167 */	{ .entry = &syscall_ni_syscall },
++/* 168 */	{ .entry = &syscall_ni_syscall },
++/* 169 */	{ .entry = &syscall_ni_syscall },
++/* 170 */	{ .entry = &syscall_bpf },
++/* 171 */	{ .entry = &syscall_userfaultfd },
++/* 172 */	{ .entry = &syscall_membarrier },
++/* 173 */	{ .entry = &syscall_ni_syscall },	/* mlock2 */
++/* 174 */	{ .entry = &syscall_getpid },
++/* 175 */	{ .entry = &syscall_getppid },
++/* 176 */	{ .entry = &syscall_getuid },
++/* 177 */	{ .entry = &syscall_geteuid },
++/* 178 */	{ .entry = &syscall_getgid },
++/* 179 */	{ .entry = &syscall_getegid },
++/* 180 */	{ .entry = &syscall_ni_syscall },	/* epoll_pwait2 */
++/* 181 */	{ .entry = &syscall_ni_syscall },	/* mount_setattr */
++/* 182 */	{ .entry = &syscall_quotactl_fd },
++/* 183 */	{ .entry = &syscall_landlock_create_ruleset },
++/* 184 */	{ .entry = &syscall_landlock_add_rule },
++/* 185 */	{ .entry = &syscall_landlock_restrict_self },
++/* 186 */	{ .entry = &syscall_ni_syscall },
++/* 187 */	{ .entry = &syscall_process_mrelease },
++/* 188 */	{ .entry = &syscall_futex_waitv },
++/* 189 */	{ .entry = &syscall_set_mempolicy_home_node },
++/* 190 */	{ .entry = &syscall_ni_syscall },	/* cachestat */
++/* 191 */	{ .entry = &syscall_ni_syscall },	/* fchmodat2 */
++/* 192 */	{ .entry = &syscall_ni_syscall },
++/* 193 */	{ .entry = &syscall_ni_syscall },
++/* 194 */	{ .entry = &syscall_ni_syscall },
++/* 195 */	{ .entry = &syscall_ni_syscall },
++/* 196 */	{ .entry = &syscall_ni_syscall },
++/* 197 */	{ .entry = &syscall_ni_syscall },
++/* 198 */	{ .entry = &syscall_ni_syscall },
++/* 199 */	{ .entry = &syscall_ni_syscall },
++/* 200 */	{ .entry = &syscall_msgctl },
++/* 201 */	{ .entry = &syscall_msgget },
++/* 202 */	{ .entry = &syscall_msgrcv },
++/* 203 */	{ .entry = &syscall_msgsnd },
++/* 204 */	{ .entry = &syscall_semctl },
++/* 205 */	{ .entry = &syscall_semget },
++/* 206 */	{ .entry = &syscall_semop },
++/* 207 */	{ .entry = &syscall_ni_syscall },
++/* 208 */	{ .entry = &syscall_lchown },
++/* 209 */	{ .entry = &syscall_shmat },
++/* 210 */	{ .entry = &syscall_shmctl },
++/* 211 */	{ .entry = &syscall_shmdt },
++/* 212 */	{ .entry = &syscall_shmget },
++/* 213 */	{ .entry = &syscall_ni_syscall },
++/* 214 */	{ .entry = &syscall_ni_syscall },
++/* 215 */	{ .entry = &syscall_ni_syscall },
++/* 216 */	{ .entry = &syscall_ni_syscall },
++/* 217 */	{ .entry = &syscall_msync },
++/* 218 */	{ .entry = &syscall_ni_syscall },
++/* 219 */	{ .entry = &syscall_ni_syscall },
++/* 220 */	{ .entry = &syscall_ni_syscall },
++/* 221 */	{ .entry = &syscall_ni_syscall },
++/* 222 */	{ .entry = &syscall_ni_syscall },
++/* 223 */	{ .entry = &syscall_ni_syscall },
++/* 224 */	{ .entry = &syscall_ni_syscall },
++/* 225 */	{ .entry = &syscall_ni_syscall },
++/* 226 */	{ .entry = &syscall_ni_syscall },
++/* 227 */	{ .entry = &syscall_ni_syscall },
++/* 228 */	{ .entry = &syscall_ni_syscall },
++/* 229 */	{ .entry = &syscall_ni_syscall },	/* statfs64 */
++/* 230 */	{ .entry = &syscall_ni_syscall },	/* fstatfs64 */
++/* 231 */	{ .entry = &syscall_ni_syscall },
++/* 232 */	{ .entry = &syscall_ni_syscall },
++/* 233 */	{ .entry = &syscall_getpgid },
++/* 234 */	{ .entry = &syscall_getsid },
++/* 235 */	{ .entry = &syscall_sigaltstack },
++/* 236 */	{ .entry = &syscall_ni_syscall },
++/* 237 */	{ .entry = &syscall_ni_syscall },
++/* 238 */	{ .entry = &syscall_ni_syscall },
++/* 239 */	{ .entry = &syscall_ni_syscall },
++/* 240 */	{ .entry = &syscall_ni_syscall },
++/* 241 */	{ .entry = &syscall_ni_syscall },
++/* 242 */	{ .entry = &syscall_ni_syscall },
++/* 243 */	{ .entry = &syscall_ni_syscall },
++/* 244 */	{ .entry = &syscall_ni_syscall },
++/* 245 */	{ .entry = &syscall_ni_syscall },
++/* 246 */	{ .entry = &syscall_ni_syscall },
++/* 247 */	{ .entry = &syscall_ni_syscall },
++/* 248 */	{ .entry = &syscall_ni_syscall },
++/* 249 */	{ .entry = &syscall_ni_syscall },
++/* 250 */	{ .entry = &syscall_ni_syscall },
++/* 251 */	{ .entry = &syscall_ni_syscall },
++/* 252 */	{ .entry = &syscall_ni_syscall },
++/* 253 */	{ .entry = &syscall_ni_syscall },
++/* 254 */	{ .entry = &syscall_sysfs },
++/* 255 */	{ .entry = &syscall_ni_syscall },
++/* 256 */	{ .entry = &syscall_ni_syscall },	/* getsysinfo */
++/* 257 */	{ .entry = &syscall_ni_syscall },	/* setsysinfo */
++/* 258 */	{ .entry = &syscall_ni_syscall },
++/* 259 */	{ .entry = &syscall_ni_syscall },
++/* 260 */	{ .entry = &syscall_ni_syscall },
++/* 261 */	{ .entry = &syscall_ni_syscall },
++/* 262 */	{ .entry = &syscall_ni_syscall },
++/* 263 */	{ .entry = &syscall_ni_syscall },
++/* 264 */	{ .entry = &syscall_ni_syscall },
++/* 265 */	{ .entry = &syscall_ni_syscall },
++/* 266 */	{ .entry = &syscall_ni_syscall },
++/* 267 */	{ .entry = &syscall_ni_syscall },
++/* 268 */	{ .entry = &syscall_ni_syscall },
++/* 269 */	{ .entry = &syscall_ni_syscall },
++/* 270 */	{ .entry = &syscall_ni_syscall },
++/* 271 */	{ .entry = &syscall_pidfd_send_signal },
++/* 272 */	{ .entry = &syscall_io_uring_setup },
++/* 273 */	{ .entry = &syscall_io_uring_enter },
++/* 274 */	{ .entry = &syscall_io_uring_register },
++/* 275 */	{ .entry = &syscall_open_tree },
++/* 276 */	{ .entry = &syscall_move_mount },
++/* 277 */	{ .entry = &syscall_fsopen },
++/* 278 */	{ .entry = &syscall_fsconfig },
++/* 279 */	{ .entry = &syscall_fsmount },
++/* 280 */	{ .entry = &syscall_fspick },
++/* 281 */	{ .entry = &syscall_pidfd_open },
++/* 282 */	{ .entry = &syscall_clone3 },
++/* 283 */	{ .entry = &syscall_close_range },
++/* 284 */	{ .entry = &syscall_ni_syscall },	/* openat2 */
++/* 285 */	{ .entry = &syscall_pidfd_getfd },
++/* 286 */	{ .entry = &syscall_ni_syscall },	/* faccessat2 */
++/* 287 */	{ .entry = &syscall_ni_syscall },	/* process_madvise */
++/* 288 */	{ .entry = &syscall_ni_syscall },	/* pkey_mprotect */
++/* 289 */	{ .entry = &syscall_ni_syscall },	/* pkey_alloc */
++/* 290 */	{ .entry = &syscall_ni_syscall },	/* pkey_free */
++/* 291 */	{ .entry = &syscall_ni_syscall },
++/* 292 */	{ .entry = &syscall_ni_syscall },
++/* 293 */	{ .entry = &syscall_ni_syscall },
++/* 294 */	{ .entry = &syscall_ni_syscall },
++/* 295 */	{ .entry = &syscall_ni_syscall },
++/* 296 */	{ .entry = &syscall_ni_syscall },
++/* 297 */	{ .entry = &syscall_ni_syscall },
++/* 298 */	{ .entry = &syscall_getpriority },
++/* 299 */	{ .entry = &syscall_sigprocmask },
++/* 300 */	{ .entry = &syscall_bdflush },
++/* 301 */	{ .entry = &syscall_ni_syscall },
++/* 302 */	{ .entry = &syscall_mount },
++/* 303 */	{ .entry = &syscall_ni_syscall },
++/* 304 */	{ .entry = &syscall_ni_syscall },	/* swapoff */
++/* 305 */	{ .entry = &syscall_getdents },
++/* 306 */	{ .entry = &syscall_ni_syscall },	/* create_module */
++/* 307 */	{ .entry = &syscall_init_module },
++/* 308 */	{ .entry = &syscall_delete_module },
++/* 309 */	{ .entry = &syscall_ni_syscall },	/* get_kernel_syms */
++/* 310 */	{ .entry = &syscall_syslog },
++/* 311 */	{ .entry = &syscall_reboot },
++/* 312 */	{ .entry = &syscall_clone },
++/* 313 */	{ .entry = &syscall_uselib },
++/* 314 */	{ .entry = &syscall_mlock },
++/* 315 */	{ .entry = &syscall_munlock },
++/* 316 */	{ .entry = &syscall_mlockall },
++/* 317 */	{ .entry = &syscall_munlockall },
++/* 318 */	{ .entry = &syscall_sysinfo },
++/* 319 */	{ .entry = &syscall_ni_syscall },
++/* 320 */	{ .entry = &syscall_ni_syscall },
++/* 321 */	{ .entry = &syscall_oldumount },
++/* 322 */	{ .entry = &syscall_ni_syscall },	/* swapon */
++/* 323 */	{ .entry = &syscall_times },
++/* 324 */	{ .entry = &syscall_personality },
++/* 325 */	{ .entry = &syscall_setfsuid },
++/* 326 */	{ .entry = &syscall_setfsgid },
++/* 327 */	{ .entry = &syscall_ustat },
++/* 328 */	{ .entry = &syscall_statfs },
++/* 329 */	{ .entry = &syscall_fstatfs },
++/* 330 */	{ .entry = &syscall_sched_setparam },
++/* 331 */	{ .entry = &syscall_sched_getparam },
++/* 332 */	{ .entry = &syscall_sched_setscheduler },
++/* 333 */	{ .entry = &syscall_sched_getscheduler },
++/* 334 */	{ .entry = &syscall_sched_yield },
++/* 335 */	{ .entry = &syscall_sched_get_priority_max },
++/* 336 */	{ .entry = &syscall_sched_get_priority_min },
++/* 337 */	{ .entry = &syscall_sched_rr_get_interval },
++/* 338 */	{ .entry = &syscall_ni_syscall },	/* afs_syscall */
++/* 339 */	{ .entry = &syscall_newuname },
++/* 340 */	{ .entry = &syscall_nanosleep },
++/* 341 */	{ .entry = &syscall_mremap },
++/* 342 */	{ .entry = &syscall_nfsservctl },
++/* 343 */	{ .entry = &syscall_setresuid },
++/* 344 */	{ .entry = &syscall_getresuid },
++/* 345 */	{ .entry = &syscall_pciconfig_read },
++/* 346 */	{ .entry = &syscall_pciconfig_write },
++/* 347 */	{ .entry = &syscall_ni_syscall },	/* query_module */
++/* 348 */	{ .entry = &syscall_prctl },
++/* 349 */	{ .entry = &syscall_ni_syscall },	/* pread64 */
++/* 350 */	{ .entry = &syscall_ni_syscall },	/* pwrite64 */
++/* 351 */	{ .entry = &syscall_rt_sigreturn },
++/* 352 */	{ .entry = &syscall_ni_syscall },	/* rt_sigaction */
++/* 353 */	{ .entry = &syscall_rt_sigprocmask },
++/* 354 */	{ .entry = &syscall_rt_sigpending },
++/* 355 */	{ .entry = &syscall_rt_sigtimedwait },
++/* 356 */	{ .entry = &syscall_rt_sigqueueinfo },
++/* 357 */	{ .entry = &syscall_rt_sigsuspend },
++/* 358 */	{ .entry = &syscall_select },
++/* 359 */	{ .entry = &syscall_gettimeofday },
++/* 360 */	{ .entry = &syscall_settimeofday },
++/* 361 */	{ .entry = &syscall_getitimer },
++/* 362 */	{ .entry = &syscall_setitimer },
++/* 363 */	{ .entry = &syscall_utimes },
++/* 364 */	{ .entry = &syscall_getrusage },
++/* 365 */	{ .entry = &syscall_wait4 },
++/* 366 */	{ .entry = &syscall_adjtimex },
++/* 367 */	{ .entry = &syscall_getcwd },
++/* 368 */	{ .entry = &syscall_capget },
++/* 369 */	{ .entry = &syscall_capset },
++/* 370 */	{ .entry = &syscall_sendfile },
++/* 371 */	{ .entry = &syscall_setresgid },
++/* 372 */	{ .entry = &syscall_getresgid },
++/* 373 */	{ .entry = &syscall_ni_syscall },	/* dipc */
++/* 374 */	{ .entry = &syscall_pivot_root },
++/* 375 */	{ .entry = &syscall_mincore },
++/* 376 */	{ .entry = &syscall_pciconfig_iobase },
++/* 377 */	{ .entry = &syscall_ni_syscall },	/* getdents64 */
++/* 378 */	{ .entry = &syscall_gettid },
++/* 379 */	{ .entry = &syscall_readahead },
++/* 380 */	{ .entry = &syscall_ni_syscall },
++/* 381 */	{ .entry = &syscall_tkill },
++/* 382 */	{ .entry = &syscall_setxattr },
++/* 383 */	{ .entry = &syscall_lsetxattr },
++/* 384 */	{ .entry = &syscall_fsetxattr },
++/* 385 */	{ .entry = &syscall_getxattr },
++/* 386 */	{ .entry = &syscall_lgetxattr },
++/* 387 */	{ .entry = &syscall_fgetxattr },
++/* 388 */	{ .entry = &syscall_listxattr },
++/* 389 */	{ .entry = &syscall_ni_syscall },	/* llistxattr */
++/* 390 */	{ .entry = &syscall_ni_syscall },	/* flistxattr */
++/* 391 */	{ .entry = &syscall_removexattr },
++/* 392 */	{ .entry = &syscall_lremovexattr },
++/* 393 */	{ .entry = &syscall_fremovexattr },
++/* 394 */	{ .entry = &syscall_futex },
++/* 395 */	{ .entry = &syscall_sched_setaffinity },
++/* 396 */	{ .entry = &syscall_sched_getaffinity },
++/* 397 */	{ .entry = &syscall_ni_syscall },	/* tuxcall */
++/* 398 */	{ .entry = &syscall_io_setup },
++/* 399 */	{ .entry = &syscall_io_destroy },
++/* 400 */	{ .entry = &syscall_io_getevents },
++/* 401 */	{ .entry = &syscall_io_submit },
++/* 402 */	{ .entry = &syscall_io_cancel },
++/* 403 */	{ .entry = &syscall_io_pgetevents },
++/* 404 */	{ .entry = &syscall_rseq },
++/* 405 */	{ .entry = &syscall_exit_group },
++/* 406 */	{ .entry = &syscall_lookup_dcookie },
++/* 407 */	{ .entry = &syscall_epoll_create },
++/* 408 */	{ .entry = &syscall_epoll_ctl },
++/* 409 */	{ .entry = &syscall_epoll_wait },
++/* 410 */	{ .entry = &syscall_remap_file_pages },
++/* 411 */	{ .entry = &syscall_set_tid_address },
++/* 412 */	{ .entry = &syscall_restart_syscall },
++/* 413 */	{ .entry = &syscall_ni_syscall },	/* fadvise64 */
++/* 414 */	{ .entry = &syscall_timer_create },
++/* 415 */	{ .entry = &syscall_timer_settime },
++/* 416 */	{ .entry = &syscall_timer_gettime },
++/* 417 */	{ .entry = &syscall_timer_getoverrun },
++/* 418 */	{ .entry = &syscall_timer_delete },
++/* 419 */	{ .entry = &syscall_clock_settime },
++/* 420 */	{ .entry = &syscall_clock_gettime },
++/* 421 */	{ .entry = &syscall_clock_getres },
++/* 422 */	{ .entry = &syscall_clock_nanosleep },
++/* 423 */	{ .entry = &syscall_semtimedop },
++/* 424 */	{ .entry = &syscall_tgkill },
++/* 425 */	{ .entry = &syscall_ni_syscall },	/* stat64 */
++/* 426 */	{ .entry = &syscall_ni_syscall },	/* lstat64 */
++/* 427 */	{ .entry = &syscall_ni_syscall },	/* fstat64 */
++/* 428 */	{ .entry = &syscall_ni_syscall },	/* vserver */
++/* 429 */	{ .entry = &syscall_mbind },
++/* 430 */	{ .entry = &syscall_get_mempolicy },
++/* 431 */	{ .entry = &syscall_set_mempolicy },
++/* 432 */	{ .entry = &syscall_mq_open },
++/* 433 */	{ .entry = &syscall_mq_unlink },
++/* 434 */	{ .entry = &syscall_mq_timedsend },
++/* 435 */	{ .entry = &syscall_mq_timedreceive },
++/* 436 */	{ .entry = &syscall_mq_notify },
++/* 437 */	{ .entry = &syscall_mq_getsetattr },
++/* 438 */	{ .entry = &syscall_waitid },
++/* 439 */	{ .entry = &syscall_add_key },
++/* 440 */	{ .entry = &syscall_request_key },
++/* 441 */	{ .entry = &syscall_keyctl },
++/* 442 */	{ .entry = &syscall_ioprio_set },
++/* 443 */	{ .entry = &syscall_ioprio_get },
++/* 444 */	{ .entry = &syscall_inotify_init },
++/* 445 */	{ .entry = &syscall_inotify_add_watch },
++/* 446 */	{ .entry = &syscall_inotify_rm_watch },
++/* 447 */	{ .entry = &syscall_fdatasync },
++/* 448 */	{ .entry = &syscall_kexec_load },
++/* 449 */	{ .entry = &syscall_migrate_pages },
++/* 450 */	{ .entry = &syscall_ni_syscall },	/* openat */
++/* 451 */	{ .entry = &syscall_ni_syscall },	/* mkdirat */
++/* 452 */	{ .entry = &syscall_ni_syscall },	/* mknodat */
++/* 453 */	{ .entry = &syscall_ni_syscall },	/* fchownat */
++/* 454 */	{ .entry = &syscall_futimesat },
++/* 455 */	{ .entry = &syscall_ni_syscall },	/* fstatat64 */
++/* 456 */	{ .entry = &syscall_ni_syscall },	/* unlinkat */
++/* 457 */	{ .entry = &syscall_ni_syscall },	/* renameat */
++/* 458 */	{ .entry = &syscall_linkat },
++/* 459 */	{ .entry = &syscall_ni_syscall },	/* symlinkat */
++/* 460 */	{ .entry = &syscall_ni_syscall },	/* readlinkat */
++/* 461 */	{ .entry = &syscall_ni_syscall },	/* fchmodat */
++/* 462 */	{ .entry = &syscall_faccessat },
++/* 463 */	{ .entry = &syscall_pselect6 },
++/* 464 */	{ .entry = &syscall_ni_syscall },	/* ppoll */
++/* 465 */	{ .entry = &syscall_unshare },
++/* 466 */	{ .entry = &syscall_set_robust_list },
++/* 467 */	{ .entry = &syscall_get_robust_list },
++/* 468 */	{ .entry = &syscall_splice },
++/* 469 */	{ .entry = &syscall_sync_file_range },
++/* 470 */	{ .entry = &syscall_tee },
++/* 471 */	{ .entry = &syscall_vmsplice },
++/* 472 */	{ .entry = &syscall_move_pages },
++/* 473 */	{ .entry = &syscall_getcpu },
++/* 474 */	{ .entry = &syscall_epoll_pwait },
++/* 475 */	{ .entry = &syscall_utimensat },
++/* 476 */	{ .entry = &syscall_signalfd },
++/* 477 */	{ .entry = &syscall_ni_syscall },	/* timerfd */
++/* 478 */	{ .entry = &syscall_eventfd },
++/* 479 */	{ .entry = &syscall_ni_syscall },	/* recvmmsg */
++/* 480 */	{ .entry = &syscall_fallocate },
++/* 481 */	{ .entry = &syscall_timerfd_create },
++/* 482 */	{ .entry = &syscall_timerfd_settime },
++/* 483 */	{ .entry = &syscall_timerfd_gettime },
++/* 484 */	{ .entry = &syscall_ni_syscall },	/* signalfd4 */
++/* 485 */	{ .entry = &syscall_ni_syscall },	/* eventfd2 */
++/* 486 */	{ .entry = &syscall_ni_syscall },	/* epoll_create1 */
++/* 487 */	{ .entry = &syscall_ni_syscall },	/* dup3 */
++/* 488 */	{ .entry = &syscall_ni_syscall },	/* pipe2 */
++/* 489 */	{ .entry = &syscall_ni_syscall },	/* inotify_init1 */
++/* 490 */	{ .entry = &syscall_ni_syscall },	/* preadv */
++/* 491 */	{ .entry = &syscall_ni_syscall },	/* pwritev */
++/* 492 */	{ .entry = &syscall_rt_tgsigqueueinfo },
++/* 493 */	{ .entry = &syscall_perf_event_open },
++/* 494 */	{ .entry = &syscall_fanotify_init },
++/* 495 */	{ .entry = &syscall_fanotify_mark },
++/* 496 */	{ .entry = &syscall_ni_syscall },	/* prlimit64 */
++/* 497 */	{ .entry = &syscall_name_to_handle_at },
++/* 498 */	{ .entry = &syscall_ni_syscall },	/* open_by_handle_at */
++/* 499 */	{ .entry = &syscall_clock_adjtime },
++/* 500 */	{ .entry = &syscall_syncfs },
++/* 501 */	{ .entry = &syscall_setns },
++/* 502 */	{ .entry = &syscall_ni_syscall },	/* accept4 */
++/* 503 */	{ .entry = &syscall_ni_syscall },	/* sendmmsg */
++/* 504 */	{ .entry = &syscall_process_vm_readv },
++/* 505 */	{ .entry = &syscall_process_vm_writev },
++/* 506 */	{ .entry = &syscall_kcmp },
++/* 507 */	{ .entry = &syscall_finit_module },
++/* 508 */	{ .entry = &syscall_sched_setattr },
++/* 509 */	{ .entry = &syscall_sched_getattr },
++/* 510 */	{ .entry = &syscall_ni_syscall },	/* renameat2 */
++/* 511 */	{ .entry = &syscall_getrandom },
++/* 512 */	{ .entry = &syscall_memfd_create },
++/* 513 */	{ .entry = &syscall_ni_syscall },	/* execveat */
++/* 514 */	{ .entry = &syscall_seccomp },
++/* 515 */	{ .entry = &syscall_copy_file_range },
++/* 516 */	{ .entry = &syscall_ni_syscall },	/* preadv2 */
++/* 517 */	{ .entry = &syscall_ni_syscall },	/* pwritev2 */
++/* 518 */	{ .entry = &syscall_ni_syscall },	/* statx */
++};
+-- 
+2.43.4
+

@@ -1,3 +1,9 @@
+trinity (1.9+git20241022.ba2360ed84a8-1deepin2) unstable; urgency=medium
+
+  * feat: add sw64 support
+
+ -- hudeng <hudeng@deepin.org>  Fri, 12 Sep 2025 09:57:00 +0800
+
 trinity (1.9+git20241022.ba2360ed84a8-1deepin1) unstable; urgency=medium
 
   * add LoongArch64 support.
